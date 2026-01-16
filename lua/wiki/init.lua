@@ -19,7 +19,7 @@ function M.generate_index()
 end
 
 function M.search()
-	fs.enaure()
+	fs.ensure()
 	search.live_grep()
 end
 
