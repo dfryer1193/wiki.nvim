@@ -1,19 +1,26 @@
-local config = require 'wiki.config'
-local index = require 'wiki.index'
---local search = require("wiki.search")
+local config = require("wiki.config")
+local index = require("wiki.index")
+local search = require("wiki.search")
+local fs = require("wiki.fs")
 
 local M = {}
 
+function M.setup(user_config)
+	config.setup(user_config or {})
+end
+
 function M.open_index()
-  vim.cmd('edit ' .. config.index_file)
+	fs.enaure()
+	vim.cmd.edit(config.index_file)
 end
 
 function M.generate_index()
-  index.generate()
+	index.generate()
 end
 
---function M.search()
---  search.live_grep()
---end
+function M.search()
+	fs.enaure()
+	search.live_grep()
+end
 
 return M
