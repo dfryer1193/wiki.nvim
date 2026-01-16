@@ -10,7 +10,7 @@ function M.setup(user_config)
 end
 
 function M.open_index()
-	fs.enaure()
+	fs.ensure()
 	vim.cmd.edit(config.index_file)
 end
 
