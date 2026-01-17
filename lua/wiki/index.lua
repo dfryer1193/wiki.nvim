@@ -68,6 +68,16 @@ local function render_tree(tree, lines, depth, relpath)
 	end
 end
 
+local function same_file(buf, path)
+	local bufname = vim.api.nvim_buf_get_name(buf)
+	if bufname == "" then
+		return false
+	end
+	local realbuf = vim.loop.fs_realpath(bufname)
+	local realpath = vim.loop.fs_realpath(path)
+	return realbuf == realpath
+end
+
 function M.generate()
 	local root = config.pages_dir
 	local tree = build_tree(root)
@@ -79,8 +89,7 @@ function M.generate()
 	vim.fn.writefile(lines, config.index_file)
 
 	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-		local name = vim.api.nvim_buf_get_name(buf)
-		if vim.api.nvim_buf_is_loaded(buf) and name == config.index_file then
+		if vim.api.nvim_buf_is_loaded(buf) and same_file(buf, config.index_file) then
 			vim.cmd.edit("!")
 		end
 	end
