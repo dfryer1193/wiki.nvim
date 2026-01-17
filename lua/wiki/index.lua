@@ -50,7 +50,6 @@ local function render_tree(tree, lines, depth, relpath)
 		else
 			local indent = string.rep("\t", depth - 5)
 			table.insert(lines, indent .. "- **" .. dir_name .. "**")
-			table.insert(lines, "")
 		end
 
 		render_tree(subtree, lines, depth + 1, relpath .. dir_name .. "/")
