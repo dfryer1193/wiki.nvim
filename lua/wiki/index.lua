@@ -63,7 +63,7 @@ local function render_tree(tree, lines, depth, relpath)
 
 		for _, file in ipairs(tree.files) do
 			local name = file:gsub("%.md$", "")
-			table.insert(lines, string.format("%s- (%s)[%s%s]", file_indent, name, relpath, file))
+			table.insert(lines, string.format("%s- [%s](%s%s)", file_indent, name, relpath, file))
 		end
 	end
 end
