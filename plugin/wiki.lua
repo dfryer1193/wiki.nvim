@@ -10,3 +10,10 @@ vim.api.nvim_create_user_command("WikiGenerate", function()
 	require("wiki.index").generate()
 	print("Wiki index generated.")
 end, {})
+
+vim.api.nvim_create_user_command("WikiNewPage", function()
+	local path = vim.fn.input("New wiki page path: ")
+	if path ~= "" then
+		require("wiki.page").new_page(path)
+	end
+end, {})
