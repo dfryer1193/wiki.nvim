@@ -93,6 +93,8 @@ function M.generate()
 			vim.cmd.edit(config.index_file)
 		end
 	end
+
+	print("Wiki index generated.")
 end
 
 return M

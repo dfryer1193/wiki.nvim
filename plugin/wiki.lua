@@ -8,7 +8,6 @@ end, {})
 
 vim.api.nvim_create_user_command("WikiGenerate", function()
 	require("wiki.index").generate()
-	print("Wiki index generated.")
 end, {})
 
 vim.api.nvim_create_user_command("WikiNewPage", function()
@@ -17,3 +16,14 @@ vim.api.nvim_create_user_command("WikiNewPage", function()
 		require("wiki.page").new_page(path)
 	end
 end, {})
+
+vim.api.nvim_create_autocmd("BufWritePost", {
+	callback = function(args)
+		local bufname = vim.api.nvim_buf_get_name(args.buf)
+		local pages_dir = require("wiki.config").pages_dir
+
+		if bufname:sub(1, #pages_dir) == pages_dir then
+			require("wiki.index").generate()
+		end
+	end,
+})
