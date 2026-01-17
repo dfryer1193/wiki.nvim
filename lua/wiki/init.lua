@@ -14,8 +14,11 @@ function M.open_index()
 	vim.cmd.edit(config.index_file)
 
 	local buf = vim.api.nvim_get_current_buf()
-	vim.api.nvim_buf_set_option(buf, "modifiable", false)
-	vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
+	vim.bo[buf].modifiable = false
+	vim.bo[buf].readonly = true
+	vim.bo[buf].filetype = "markdown"
+	vim.bo[buf].syntax = "markdown"
+	vim.bo[buf].buftype = "nofile"
 end
 
 function M.generate_index()
