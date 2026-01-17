@@ -33,7 +33,7 @@ local function build_tree(path)
 		if entry.type == "directory" then
 			tree.dirs[entry.name] = build_tree(full_path)
 		else
-			table.insert(tree.files, entry.name)
+			tree.files[entry.name] = full_path
 		end
 	end
 
@@ -55,16 +55,14 @@ local function render_tree(tree, lines, depth, relpath)
 		render_tree(subtree, lines, depth + 1, relpath .. dir_name .. "/")
 	end
 
-	if #tree.files > 0 then
+	for fname, full_path in pairs(tree.files) do
 		local file_indent = ""
 		if depth >= 5 then
 			file_indent = string.rep("  ", depth - 5)
 		end
 
-		for _, file in ipairs(tree.files) do
-			local name = file:gsub("%.md$", "")
-			table.insert(lines, string.format("%s- [%s](%s%s)", file_indent, name, relpath, file))
-		end
+		local name = fname:gsub("%.md$", "")
+		table.insert(lines, string.format("%s- [%s](%s%s)", file_indent, name, relpath, fname))
 	end
 end
 
