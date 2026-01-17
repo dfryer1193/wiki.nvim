@@ -90,7 +90,7 @@ function M.generate()
 
 	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
 		if vim.api.nvim_buf_is_loaded(buf) and same_file(buf, config.index_file) then
-			vim.cmd.edit("!")
+			vim.cmd.edit(config.index_file)
 		end
 	end
 end
