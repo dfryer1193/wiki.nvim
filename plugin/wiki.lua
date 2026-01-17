@@ -20,7 +20,7 @@ end, {})
 vim.api.nvim_create_autocmd("BufWritePost", {
 	callback = function(args)
 		local bufname = vim.api.nvim_buf_get_name(args.buf)
-		local pages_dir = require("wiki.config").pages_dir
+		local pages_dir = vim.loop.fs_realpath(require("wiki.config").pages_dir)
 
 		if bufname:sub(1, #pages_dir) == pages_dir then
 			require("wiki.index").generate()
