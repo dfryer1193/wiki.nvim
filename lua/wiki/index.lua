@@ -45,7 +45,6 @@ local function render_tree(tree, lines, depth, relpath)
 
 	for dir_name, subtree in pairs(tree.dirs) do
 		if depth < 5 then
-			table.insert(lines, "")
 			table.insert(lines, string.rep("#", depth + 2) .. " " .. dir_name)
 			table.insert(lines, "")
 		else
