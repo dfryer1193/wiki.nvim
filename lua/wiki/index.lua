@@ -43,21 +43,33 @@ end
 local function render_tree(tree, lines, depth, relpath)
 	relpath = relpath or ""
 
+	local has_file_newline = false
 	for fname, full_path in pairs(tree.files) do
 		local file_indent = ""
 		if depth >= 5 then
 			file_indent = string.rep("  ", depth - 5)
+		else
+			if not has_file_newline then
+				has_file_newline = true
+				table.insert(lines, "")
+			end
 		end
 
 		local name = fname:gsub("%.md$", "")
-		table.insert(lines, string.format("%s- [%s](%s%s)", file_indent, name, relpath, fname))
+		table.insert(lines, string.format("%s- [%s](%s%s)", file_indent, name, full_path, fname))
 	end
 
+	local has_newline = false
 	for dir_name, subtree in pairs(tree.dirs) do
 		if depth < 5 then
 			table.insert(lines, "")
 			table.insert(lines, string.rep("#", depth + 2) .. " " .. dir_name)
 		else
+			if depth == 5 and not has_newline then
+				has_newline = true
+				table.insert(lines, "")
+			end
+
 			local indent = string.rep("  ", depth - 5)
 			table.insert(lines, indent .. "- **" .. dir_name .. "**")
 		end
@@ -80,7 +92,7 @@ function M.generate()
 	local root = config.pages_dir
 	local tree = build_tree(root)
 
-	local lines = { "# Wiki", "" }
+	local lines = { "# Wiki" }
 
 	render_tree(tree, lines, 0, "pages/")
 
