@@ -48,7 +48,7 @@ local function render_tree(tree, lines, depth, relpath)
 			table.insert(lines, string.rep("#", depth + 2) .. " " .. dir_name)
 			table.insert(lines, "")
 		else
-			local indent = string.rep("\t", depth - 5)
+			local indent = string.rep("  ", depth - 5)
 			table.insert(lines, indent .. "- **" .. dir_name .. "**")
 		end
 
@@ -58,7 +58,7 @@ local function render_tree(tree, lines, depth, relpath)
 	if #tree.files > 0 then
 		local file_indent = ""
 		if depth >= 5 then
-			file_indent = string.rep("\t", depth - 5)
+			file_indent = string.rep("  ", depth - 5)
 		end
 
 		for _, file in ipairs(tree.files) do
