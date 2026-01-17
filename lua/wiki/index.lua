@@ -81,10 +81,7 @@ function M.generate()
 	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
 		local name = vim.api.nvim_buf_get_name(buf)
 		if vim.api.nvim_buf_is_loaded(buf) and name == config.index_file then
-			vim.bo[buf].modifiable = true
-			vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-			vim.bo[buf].modifiable = false
-			vim.bo[buf].readonly = true
+			vim.cmd.edit("!")
 		end
 	end
 end

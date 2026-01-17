@@ -18,7 +18,6 @@ function M.open_index()
 	vim.bo[buf].readonly = true
 	vim.bo[buf].filetype = "markdown"
 	vim.bo[buf].syntax = "markdown"
-	vim.bo[buf].buftype = "nofile"
 end
 
 function M.generate_index()
