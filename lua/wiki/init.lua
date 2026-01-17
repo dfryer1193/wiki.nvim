@@ -12,6 +12,10 @@ end
 function M.open_index()
 	fs.ensure()
 	vim.cmd.edit(config.index_file)
+
+	local buf = vim.api.nvim_get_current_buf()
+	vim.api.nvim_buf_set_option(buf, "modifiable", false)
+	vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
 end
 
 function M.generate_index()

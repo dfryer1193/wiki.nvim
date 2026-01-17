@@ -77,6 +77,17 @@ function M.generate()
 	render_tree(tree, lines, 0, "pages/")
 
 	vim.fn.writefile(lines, config.index_file)
+
+	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+		if vim.api.nvim_buf_is_loaded(buf) then
+			local name = vim.api.nvim_buf_get_name(buf)
+			if name == config.index_file then
+				vim.api.nvim_buf_call(buf, function()
+					vim.cmd("edit!")
+				end)
+			end
+		end
+	end
 end
 
 return M
