@@ -43,6 +43,16 @@ end
 local function render_tree(tree, lines, depth, relpath)
 	relpath = relpath or ""
 
+	for fname, full_path in pairs(tree.files) do
+		local file_indent = ""
+		if depth >= 5 then
+			file_indent = string.rep("  ", depth - 5)
+		end
+
+		local name = fname:gsub("%.md$", "")
+		table.insert(lines, string.format("%s- [%s](%s%s)", file_indent, name, relpath, fname))
+	end
+
 	for dir_name, subtree in pairs(tree.dirs) do
 		if depth < 5 then
 			table.insert(lines, string.rep("#", depth + 2) .. " " .. dir_name)
@@ -53,16 +63,6 @@ local function render_tree(tree, lines, depth, relpath)
 		end
 
 		render_tree(subtree, lines, depth + 1, relpath .. dir_name .. "/")
-	end
-
-	for fname, full_path in pairs(tree.files) do
-		local file_indent = ""
-		if depth >= 5 then
-			file_indent = string.rep("  ", depth - 5)
-		end
-
-		local name = fname:gsub("%.md$", "")
-		table.insert(lines, string.format("%s- [%s](%s%s)", file_indent, name, relpath, fname))
 	end
 end
 
