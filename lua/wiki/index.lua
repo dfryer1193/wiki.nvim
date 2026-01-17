@@ -1,57 +1,102 @@
-local config = require 'wiki.config'
+local config = require("wiki.config")
 
 local M = {}
 
+local function scandir(path)
+	local handle = vim.loop.fs_scandir(path)
+	if not handle then
+		return {}
+	end
+
+	local entries = {}
+	while true do
+		local name, type = vim.loop.fs_scandir_next(handle)
+		if not name then
+			break
+		end
+		table.insert(entries, { name = name, type = type })
+	end
+
+	table.sort(entries, function(a, b)
+		return a.name < b.name
+	end)
+
+	return entries
+end
+
+local function build_tree(path)
+	local tree = { dirs = {}, files = {} }
+
+	for _, entry in ipairs(scandir(path)) do
+		local full_path = path .. "/" .. entry.name
+
+		if entry.type == "directory" then
+			tree.dirs[entry.name] = build_tree(full_path)
+		else
+			table.insert(tree.files, entry.name)
+		end
+	end
+
+	return tree
+end
+
 local function get_pages()
-  local files = vim.fn.glob(config.pages_dir .. '/**/*.md', true, true)
-  local pages = {}
+	local files = vim.fn.glob(config.pages_dir .. "/**/*.md", true, true)
+	local pages = {}
 
-  for _, file in ipairs(files) do
-    local stat = vim.loop.fs_stat(file)
-    if stat then
-      table.insert(pages, {
-        path = file,
-        mtime = stat.mtime.sec,
-      })
-    end
-  end
+	for _, file in ipairs(files) do
+		local stat = vim.loop.fs_stat(file)
+		if stat then
+			table.insert(pages, {
+				path = file,
+				mtime = stat.mtime.sec,
+			})
+		end
+	end
 
-  table.sort(pages, function(a, b)
-    return a.mtime > b.mtime
-  end)
+	table.sort(pages, function(a, b)
+		return a.mtime > b.mtime
+	end)
 
-  return pages
+	return pages
 end
 
-local function ensure_dir(path)
-  local stat = vim.loop.fs_stat(path)
-  if not stat then
-    vim.fn.mkdir(path, 493) -- 493 = 0755 in octal
-  end
-end
+local function render_tree(tree, lines, depth, relpath)
+	relpath = relpath or ""
 
-local function ensure_wiki()
-  ensure_dir(config.root)
-  ensure_dir(config.pages_dir)
+	for dir_name, subtree in pairs(tree.dirs) do
+		if depth < 5 then
+			table.insert(lines, "\n" .. string.rep("#", depth + 2) .. " " .. dir_name .. "\n\n")
+		else
+			local indent = string.rep("\t", depth - 5)
+			table.insert(lines, indent .. "- **" .. dir_name .. "**\n")
+		end
+
+		render_tree(subtree, lines, depth + 1, relpath .. dir_name .. "/")
+	end
+
+	if #tree.files > 0 then
+		local file_indent = ""
+		if depth >= 5 then
+			file_indent = string.rep("\t", depth - 5)
+		end
+
+		for _, file in ipairs(tree.files) do
+			local name = file:gsub("%.md$", "")
+			table.insert(lines, string.format("%s- [%s](%s%s)\n", file_indent, name, relpath, file))
+		end
+	end
 end
 
 function M.generate()
-  ensure_wiki()
+	local root = config.pages_dir
+	local tree = build_tree(root)
 
-  local pages = get_pages()
-  local lines = {}
+	local lines = { "# Wiki\n" }
 
-  table.insert(lines, '# Wiki Index\n')
-  for _, page in ipairs(pages) do
-    local date = os.date('%Y-%m-%d', page.mtime)
-    local rel_path = page.path:gsub('^' .. config.root .. '/', '')
-    local title = vim.fn.fnamemodify(rel_path, ':t:r')
+	render_tree(tree, lines, 1, "pages/")
 
-    table.insert(lines, string.format('- [%s](%s) - %s', title, rel_path, date))
-  end
-
-  vim.fn.writefile(lines, config.index_file)
-  vim.notify('Wiki index generated at ' .. config.index_file, vim.log.levels.INFO)
+	vim.fn.writefile(lines, config.index_file)
 end
 
 return M

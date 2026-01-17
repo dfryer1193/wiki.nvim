@@ -13,7 +13,7 @@ function M.ensure()
 	ensure_dir(config.pages_dir)
 
 	if vim.fn.filereadable(config.index_file) == 0 then
-		vim.fn.writefile({ "# Wiki", "", "Welcome." }, config.index_file)
+		vim.fn.writefile({ "# Empty Wiki!" }, config.index_file)
 	end
 end
 
