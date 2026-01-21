@@ -59,14 +59,14 @@ local function render_tree(tree, lines, depth, relpath)
 		table.insert(lines, string.format("%s- [%s](%s%s)", file_indent, name, full_path, fname))
 	end
 
-	local has_newline = false
+	local has_dir_newline = false
 	for dir_name, subtree in pairs(tree.dirs) do
 		if depth < 5 then
 			table.insert(lines, "")
 			table.insert(lines, string.rep("#", depth + 2) .. " " .. dir_name)
 		else
-			if depth == 5 and not has_newline then
-				has_newline = true
+			if depth == 5 and not has_dir_newline then
+				has_dir_newline = true
 				table.insert(lines, "")
 			end
 
@@ -88,11 +88,47 @@ local function same_file(buf, path)
 	return realbuf == realpath
 end
 
+local function heading_to_block(heading)
+	local font_data = require("wiki.font")
+	local font = font_data[6] -- Get the 6-line font
+	local block_chars = {}
+
+	-- Convert heading to uppercase to match font keys
+	local upper_heading = string.upper(heading)
+
+	-- Process each character in the heading
+	for i = 1, #upper_heading do
+		local char = upper_heading:sub(i, i)
+
+		-- Check if the character exists in the font (letters A-Z and digits 0-9)
+		if font[char] then
+			table.insert(block_chars, font[char])
+		end
+	end
+
+	-- If no valid characters were found, return empty
+	if #block_chars == 0 then
+		return {}
+	end
+
+	-- Combine the characters row by row
+	local result_lines = {}
+	for row = 1, 6 do -- Since each character is 6 lines tall
+		local line = ""
+		for _, char_block in ipairs(block_chars) do
+			line = line .. char_block[row]
+		end
+		table.insert(result_lines, line)
+	end
+
+	return result_lines
+end
+
 function M.generate()
 	local root = config.pages_dir
 	local tree = build_tree(root)
 
-	local lines = { "# Wiki" }
+	local lines = { heading_to_block("# Wiki") }
 
 	render_tree(tree, lines, 0, "pages/")
 
