@@ -56,7 +56,7 @@ local function render_tree(tree, lines, depth, relpath)
 		end
 
 		local name = fname:gsub("%.md$", "")
-		table.insert(lines, string.format("%s- [%s](%s%s)", file_indent, name, full_path, fname))
+		table.insert(lines, string.format("%s- [%s](%s)", file_indent, name, full_path))
 	end
 
 	local has_dir_newline = false
