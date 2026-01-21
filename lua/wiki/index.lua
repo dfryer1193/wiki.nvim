@@ -128,7 +128,8 @@ function M.generate()
 	local root = config.pages_dir
 	local tree = build_tree(root)
 
-	local lines = { heading_to_block("# Wiki") }
+	-- local lines = { heading_to_block("# Wiki") }
+	local lines = { "# Wiki" }
 
 	render_tree(tree, lines, 0, "pages/")
 
