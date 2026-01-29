@@ -18,6 +18,16 @@ function M.open_index()
 	vim.bo[buf].readonly = true
 	vim.bo[buf].filetype = "markdown"
 	vim.bo[buf].syntax = "markdown"
+
+	local function open_page_from_index()
+		local line = vim.api.nvim_get_current_line()
+		local path = string.match(line, "%((.-)%)")
+		if path then
+			vim.cmd.edit(path)
+		end
+	end
+
+	vim.keymap.set("n", "<CR>", open_page_from_index, { noremap = true, silent = true, buffer = buf })
 	--	vim.bo[buf].buftype = "nofile"
 end
 

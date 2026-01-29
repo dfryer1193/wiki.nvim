@@ -1,3 +1,6 @@
+local config = require("wiki.config")
+vim.opt.tags:append(config.root .. "/tags")
+
 vim.api.nvim_create_user_command("WikiIndex", function()
 	require("wiki").open_index()
 end, {})

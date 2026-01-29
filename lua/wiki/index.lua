@@ -88,6 +88,31 @@ local function same_file(buf, path)
 	return realbuf == realpath
 end
 
+local function find_files(path, files)
+	files = files or {}
+	for _, entry in ipairs(scandir(path)) do
+		local full_path = path .. "/" .. entry.name
+		if entry.type == "directory" then
+			find_files(full_path, files)
+		else
+			if entry.name:match("%.md$") then
+				table.insert(files, { name = entry.name, path = full_path })
+			end
+		end
+	end
+	return files
+end
+
+local function generate_tags()
+	local files = find_files(config.pages_dir)
+	local lines = { '!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/' }
+	for _, file in ipairs(files) do
+		local tag_name = file.name:gsub("%.md$", "")
+		table.insert(lines, string.format("%s\t%s\t1", tag_name, file.path))
+	end
+	vim.fn.writefile(lines, config.root .. "/tags")
+end
+
 local function heading_to_block(heading)
 	local font_data = require("wiki.font")
 	local font = font_data[6] -- Get the 6-line font
@@ -134,6 +159,7 @@ function M.generate()
 	render_tree(tree, lines, 0, "pages/")
 
 	vim.fn.writefile(lines, config.index_file)
+	generate_tags()
 
 	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
 		if vim.api.nvim_buf_is_loaded(buf) and same_file(buf, config.index_file) then
