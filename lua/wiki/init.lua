@@ -11,7 +11,7 @@ end
 
 function M.open_index()
 	fs.ensure()
-	vim.cmd.edit(config.index_file)
+	vim.cmd("edit " .. config.index_file)
 
 	local buf = vim.api.nvim_get_current_buf()
 	vim.bo[buf].modifiable = false
@@ -19,16 +19,53 @@ function M.open_index()
 	vim.bo[buf].filetype = "markdown"
 	vim.bo[buf].syntax = "markdown"
 
-	local function open_page_from_index()
+	local function open_link()
 		local line = vim.api.nvim_get_current_line()
-		local path = string.match(line, "%((.-)%)")
+		local path, anchor = string.match(line, "%((.-)#([^)]+)%)")
+		if not path then
+			path = string.match(line, "%((.-)%)")
+		end
 		if path then
-			vim.cmd.edit(path)
+			if anchor then
+				vim.cmd("edit " .. path)
+				local tag_name = anchor:gsub("%-", " ")
+				vim.cmd("tag " .. vim.fn.escape(tag_name, " "))
+			else
+				vim.cmd("edit " .. path)
+			end
 		end
 	end
 
-	vim.keymap.set("n", "<CR>", open_page_from_index, { noremap = true, silent = true, buffer = buf })
-	--	vim.bo[buf].buftype = "nofile"
+	vim.keymap.set("n", "<CR>", open_link, { noremap = true, silent = true, buffer = buf })
+	vim.keymap.set("n", "g<C-]>", "<C-]>", { noremap = true, silent = true, buffer = buf })
+	vim.keymap.set("n", "g<C-t>", "<C-t>", { noremap = true, silent = true, buffer = buf })
+end
+
+function M.setup_buffer()
+	local buf = vim.api.nvim_get_current_buf()
+	local bufname = vim.api.nvim_buf_get_name(buf)
+	if bufname:sub(1, #config.pages_dir) == config.pages_dir then
+		vim.bo[buf].filetype = "markdown"
+		vim.keymap.set("n", "<CR>", function()
+			local line = vim.api.nvim_get_current_line()
+			local path, anchor = string.match(line, "%((.-)#([^)]+)%)")
+			if not path then
+				path = string.match(line, "%((.-)%)")
+			end
+			if path then
+				if anchor then
+					vim.cmd("edit " .. path)
+					local tag_name = anchor:gsub("%-", " ")
+					vim.cmd("tag " .. vim.fn.escape(tag_name, " "))
+				else
+					vim.cmd("edit " .. path)
+				end
+				local newbuf = vim.api.nvim_get_current_buf()
+				vim.bo[newbuf].modifiable = true
+				vim.bo[newbuf].readonly = false
+			end
+		end, { noremap = true, silent = true, buffer = buf })
+	end
 end
 
 function M.generate_index()

@@ -40,6 +40,59 @@ local function build_tree(path)
 	return tree
 end
 
+local function read_first_h1(filepath)
+	local lines = vim.fn.readfile(filepath)
+	if not lines then
+		return nil
+	end
+	for _, line in ipairs(lines) do
+		local h1_text = line:match("^#%s+(.+)$")
+		if h1_text then
+			return h1_text
+		end
+	end
+	return nil
+end
+
+local function get_link_text(filepath, filename)
+	local h1 = read_first_h1(filepath)
+	if h1 then
+		return h1
+	end
+	return filename:gsub("%.md$", "")
+end
+
+local function heading_to_block(heading, depth)
+	local font_data = require("wiki.font")
+	local font_height = math.max(1, 6 - depth)
+	local font = font_data[font_height]
+	local block_chars = {}
+
+	local upper_heading = string.upper(heading)
+
+	for i = 1, #upper_heading do
+		local char = upper_heading:sub(i, i)
+		if font[char] then
+			table.insert(block_chars, font[char])
+		end
+	end
+
+	if #block_chars == 0 then
+		return {}
+	end
+
+	local result_lines = {}
+	for row = 1, font_height do
+		local line = ""
+		for _, char_block in ipairs(block_chars) do
+			line = line .. char_block[row]
+		end
+		table.insert(result_lines, line)
+	end
+
+	return result_lines
+end
+
 local function render_tree(tree, lines, depth, relpath)
 	relpath = relpath or ""
 
@@ -55,15 +108,18 @@ local function render_tree(tree, lines, depth, relpath)
 			end
 		end
 
-		local name = fname:gsub("%.md$", "")
-		table.insert(lines, string.format("%s- [%s](%s)", file_indent, name, full_path))
+		local link_text = get_link_text(full_path, fname)
+		table.insert(lines, string.format("%s- [%s](%s)", file_indent, link_text, full_path))
 	end
 
 	local has_dir_newline = false
 	for dir_name, subtree in pairs(tree.dirs) do
 		if depth < 5 then
 			table.insert(lines, "")
-			table.insert(lines, string.rep("#", depth + 2) .. " " .. dir_name)
+			local block_lines = heading_to_block(dir_name, depth)
+			for _, block_line in ipairs(block_lines) do
+				table.insert(lines, block_line)
+			end
 		else
 			if depth == 5 and not has_dir_newline then
 				has_dir_newline = true
@@ -103,58 +159,65 @@ local function find_files(path, files)
 	return files
 end
 
-local function generate_tags()
-	local files = find_files(config.pages_dir)
-	local lines = { '!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/' }
-	for _, file in ipairs(files) do
-		local tag_name = file.name:gsub("%.md$", "")
-		table.insert(lines, string.format("%s\t%s\t1", tag_name, file.path))
-	end
-	vim.fn.writefile(lines, config.root .. "/tags")
+local function normalize_to_tag(text)
+	return text:gsub("%s+", "-"):gsub("[^%w%-]", ""):lower()
 end
 
-local function heading_to_block(heading)
-	local font_data = require("wiki.font")
-	local font = font_data[6] -- Get the 6-line font
-	local block_chars = {}
-
-	-- Convert heading to uppercase to match font keys
-	local upper_heading = string.upper(heading)
-
-	-- Process each character in the heading
-	for i = 1, #upper_heading do
-		local char = upper_heading:sub(i, i)
-
-		-- Check if the character exists in the font (letters A-Z and digits 0-9)
-		if font[char] then
-			table.insert(block_chars, font[char])
-		end
-	end
-
-	-- If no valid characters were found, return empty
-	if #block_chars == 0 then
+local function read_all_headings(filepath)
+	local lines = vim.fn.readfile(filepath)
+	if not lines then
 		return {}
 	end
 
-	-- Combine the characters row by row
-	local result_lines = {}
-	for row = 1, 6 do -- Since each character is 6 lines tall
-		local line = ""
-		for _, char_block in ipairs(block_chars) do
-			line = line .. char_block[row]
+	local headings = {}
+	for line_num, line in ipairs(lines) do
+		local level, text = line:match("^(#+)%s+(.+)$")
+		if level and text then
+			local tag_name = normalize_to_tag(text)
+			local pattern = "/^" .. vim.pesc(line) .. "$/"
+			table.insert(headings, {
+				tag = tag_name,
+				pattern = pattern,
+				line = line_num,
+				text = text,
+			})
 		end
-		table.insert(result_lines, line)
+	end
+	return headings
+end
+
+local function generate_tags()
+	local files = find_files(config.pages_dir)
+	local lines = { '!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/' }
+
+	for _, file in ipairs(files) do
+		local file_h1 = read_first_h1(file.path)
+		local tag_name
+		if file_h1 then
+			tag_name = normalize_to_tag(file_h1)
+		else
+			tag_name = file.name:gsub("%.md$", ""):lower()
+		end
+		table.insert(lines, string.format("%s\t%s\t1", tag_name, file.path))
+
+		local headings = read_all_headings(file.path)
+		for _, heading in ipairs(headings) do
+			table.insert(lines, string.format("%s\t%s\t%s", heading.tag, file.path, heading.pattern))
+		end
 	end
 
-	return result_lines
+	vim.fn.writefile(lines, config.root .. "/tags")
 end
 
 function M.generate()
 	local root = config.pages_dir
 	local tree = build_tree(root)
 
-	-- local lines = { heading_to_block("# Wiki") }
-	local lines = { "# Wiki" }
+	local lines = {}
+	local wiki_block = heading_to_block("Wiki", 0)
+	for _, line in ipairs(wiki_block) do
+		table.insert(lines, line)
+	end
 
 	render_tree(tree, lines, 0, "pages/")
 
@@ -163,7 +226,7 @@ function M.generate()
 
 	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
 		if vim.api.nvim_buf_is_loaded(buf) and same_file(buf, config.index_file) then
-			vim.cmd.edit(config.index_file)
+			vim.cmd("edit " .. config.index_file)
 		end
 	end
 
