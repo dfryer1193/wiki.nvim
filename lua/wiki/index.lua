@@ -108,8 +108,8 @@ local function render_tree(tree, lines, depth, relpath)
 			end
 		end
 
-		local link_text = get_link_text(full_path, fname)
-		table.insert(lines, string.format("%s- [%s](%s)", file_indent, link_text, full_path))
+		local relative_path = full_path:sub(#config.pages_dir + 2)
+		table.insert(lines, string.format("%s- [%s](%s)", file_indent, link_text, relative_path))
 	end
 
 	local has_dir_newline = false

@@ -8,7 +8,7 @@ function M.setup(opts)
 	opts = opts or {}
 
 	if opts.root then
-		M.root = opts.root
+		M.root = vim.fn.expand(opts.root):gsub("/$", "")
 		M.pages_dir = M.root .. "/pages"
 		M.index_file = M.root .. "/index.md"
 	end
