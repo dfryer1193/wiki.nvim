@@ -55,11 +55,13 @@ local function read_first_h1(filepath)
 end
 
 local function get_link_text(filepath, filename)
-	local h1 = read_first_h1(filepath)
-	if h1 then
-		return h1
-	end
-	return filename:gsub("%.md$", "")
+  local h1 = read_first_h1(filepath)
+  if h1 then
+    return h1
+  end
+  local fallback = filename and filename:gsub("%.md$", "") or "unknown"
+  print("DEBUG get_link_text: filepath=" .. tostring(filepath) .. ", filename=" .. tostring(filename) .. ", fallback=" .. tostring(fallback))
+  return fallback
 end
 
 local function heading_to_block(heading, depth)
@@ -108,6 +110,7 @@ local function render_tree(tree, lines, depth, relpath)
 			end
 		end
 
+		local link_text = get_link_text(full_path, fname)
 		local relative_path = full_path:sub(#config.pages_dir + 2)
 		table.insert(lines, string.format("%s- [%s](%s)", file_indent, link_text, relative_path))
 	end
