@@ -5,6 +5,16 @@ local fs = require("wiki.fs")
 
 local M = {}
 
+vim.api.nvim_set_hl(0, "WikiTitle", { bold = true, fg = "#61afef" })
+vim.api.nvim_set_hl(0, "WikiHeading0", { bold = true, fg = "#e5c07b" })
+vim.api.nvim_set_hl(0, "WikiHeading1", { bold = true, fg = "#e06c75" })
+vim.api.nvim_set_hl(0, "WikiHeading2", { bold = true, fg = "#c678dd" })
+vim.api.nvim_set_hl(0, "WikiHeading3", { bold = true, fg = "#98c379" })
+vim.api.nvim_set_hl(0, "WikiHeading4", { bold = true, fg = "#56b6c2" })
+vim.api.nvim_set_hl(0, "WikiHeading5", { bold = true, fg = "#d19a66" })
+vim.api.nvim_set_hl(0, "WikiLinkText", { fg = "#61afef" })
+vim.api.nvim_set_hl(0, "WikiLinkPath", { fg = "#5c6370", italic = true })
+
 function M.setup(user_config)
 	config.setup(user_config or {})
 end
@@ -107,25 +117,139 @@ function M.open_index()
 	fs.ensure()
 	index.generate()
 
-	local lines = vim.fn.readfile(config.index_file)
-	if not lines then
+	local lines, link_store = index.get_index_data()
+	if not lines or #lines == 0 then
 		lines = { "# Empty Wiki!" }
 	end
 
-	vim.cmd("enew")
-	local buf = vim.api.nvim_get_current_buf()
-
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+	local buf = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_lines(buf, 0, -1, true, lines)
 	vim.api.nvim_buf_set_name(buf, "wiki-index")
 
 	vim.bo[buf].modifiable = false
 	vim.bo[buf].readonly = true
-	vim.bo[buf].filetype = "markdown"
-	vim.bo[buf].syntax = "markdown"
+	vim.bo[buf].filetype = "wiki"
+	vim.bo[buf].buftype = "nofile"
 	vim.bo[buf].modified = false
 
-	vim.keymap.set("n", "<CR>", function() open_link(true) end, { noremap = true, silent = true, buffer = buf })
-	vim.keymap.set("n", "<C-]>", function() open_link(true) end, { noremap = true, silent = true, buffer = buf })
+	local ns = vim.api.nvim_create_namespace("wiki_index")
+
+	local src_id = vim.api.nvim_buf_add_highlight(buf, ns, "WikiTitle", 0, 0, -1)
+	for i = 1, #lines - 1 do
+		local link_data = link_store[i]
+		if link_data then
+			if link_data.is_title then
+				vim.api.nvim_buf_add_highlight(buf, src_id, "WikiTitle", i, 0, -1)
+			elseif link_data.is_heading then
+				local hl_group = "WikiHeading" .. link_data.depth
+				vim.api.nvim_buf_add_highlight(buf, src_id, hl_group, i, 0, -1)
+			elseif link_data.text and link_data.path then
+				vim.api.nvim_buf_add_highlight(buf, src_id, "WikiLinkText", i, 0, -1)
+			end
+		end
+	end
+
+	local win = vim.api.nvim_open_win(buf, true, {
+		relative = "editor",
+		width = vim.o.columns,
+		height = vim.o.lines,
+		row = 0,
+		col = 0,
+		style = "minimal",
+	})
+
+	vim.wo[win].wrap = false
+	vim.wo[win].cursorline = true
+
+	vim.api.nvim_buf_set_var(buf, "wiki_link_store", link_store)
+	vim.api.nvim_buf_set_var(buf, "wiki_ns", ns)
+
+	local links_by_line = {}
+	for line_idx, data in pairs(link_store) do
+		if data.path then
+			links_by_line[line_idx] = data
+		end
+	end
+	vim.api.nvim_buf_set_var(buf, "wiki_links", links_by_line)
+
+	local group = vim.api.nvim_create_augroup("wiki_index", { clear = true })
+	local last_line = nil
+	vim.api.nvim_create_autocmd("CursorMoved", {
+		buffer = buf,
+		group = group,
+		callback = function()
+			local cursor_line = vim.api.nvim_win_get_cursor(win)
+			local line_idx = cursor_line[1]
+			local links = vim.api.nvim_buf_get_var(buf, "wiki_links")
+
+			vim.bo[buf].modifiable = true
+
+			if last_line and last_line ~= line_idx and links[last_line] then
+				local link_data = links[last_line]
+				vim.api.nvim_buf_set_lines(buf, last_line - 1, last_line, true, { link_data.short })
+			end
+
+			if links[line_idx] then
+				local link_data = links[line_idx]
+				local display_line = "- [" .. link_data.text .. "](" .. link_data.path .. ")"
+				vim.api.nvim_buf_set_lines(buf, line_idx - 1, line_idx, true, { display_line })
+			end
+
+			vim.bo[buf].modifiable = false
+
+			last_line = line_idx
+		end,
+	})
+
+	vim.api.nvim_create_autocmd("BufDelete", {
+		buffer = buf,
+		group = group,
+		callback = function()
+			local valid_bufs = 0
+			for _, b in ipairs(vim.api.nvim_list_bufs()) do
+				if vim.api.nvim_buf_is_valid(b) and vim.bo[b].buflisted then
+					valid_bufs = valid_bufs + 1
+				end
+			end
+			if valid_bufs == 0 then
+				vim.cmd("qa!")
+			end
+		end,
+	})
+
+	vim.keymap.set("n", "q", function()
+		vim.cmd("bd! " .. buf)
+	end, { noremap = true, silent = true, buffer = buf })
+
+	vim.keymap.set("n", "<CR>", function()
+		local cursor_line = vim.api.nvim_win_get_cursor(win)
+		local line_idx = cursor_line[1]
+		local links = vim.api.nvim_buf_get_var(buf, "wiki_links")
+		if links[line_idx] then
+			local link_data = links[line_idx]
+			local tag_name = link_data.tag
+			vim.cmd("tag! " .. tag_name)
+			local newbuf = vim.api.nvim_get_current_buf()
+			vim.bo[newbuf].filetype = "markdown"
+			vim.bo[newbuf].modifiable = true
+			vim.bo[newbuf].readonly = false
+		end
+	end, { noremap = true, silent = true, buffer = buf })
+
+	vim.keymap.set("n", "<C-]>", function()
+		local cursor_line = vim.api.nvim_win_get_cursor(win)
+		local line_idx = cursor_line[1]
+		local links = vim.api.nvim_buf_get_var(buf, "wiki_links")
+		if links[line_idx] then
+			local link_data = links[line_idx]
+			local tag_name = link_data.tag
+			vim.cmd("tag! " .. tag_name)
+			local newbuf = vim.api.nvim_get_current_buf()
+			vim.bo[newbuf].filetype = "markdown"
+			vim.bo[newbuf].modifiable = true
+			vim.bo[newbuf].readonly = false
+		end
+	end, { noremap = true, silent = true, buffer = buf })
 end
 
 function M.setup_buffer()

@@ -94,8 +94,9 @@ local function heading_to_block(heading, depth)
 	return result_lines
 end
 
-local function render_tree(tree, lines, depth, relpath)
+local function render_tree(tree, lines, depth, relpath, link_store)
 	relpath = relpath or ""
+	link_store = link_store or {}
 
 	local has_file_newline = false
 	for fname, full_path in pairs(tree.files) do
@@ -111,16 +112,24 @@ local function render_tree(tree, lines, depth, relpath)
 
 		local link_text = get_link_text(full_path, fname)
 		local relative_path = full_path:sub(#config.pages_dir + 2)
-		table.insert(lines, string.format("%s- [%s](%s)", file_indent, link_text, relative_path))
+		local tag_name = relative_path:gsub("%.md$", ""):gsub("/", "-")
+		local line_idx = #lines + 1
+		local short_line = file_indent .. "- " .. link_text
+		table.insert(lines, short_line)
+		link_store[line_idx] = { text = link_text, path = relative_path, short = short_line, tag = tag_name }
 	end
 
 	local has_dir_newline = false
 	for dir_name, subtree in pairs(tree.dirs) do
 		if depth < 5 then
-			table.insert(lines, "")
 			local block_lines = heading_to_block(dir_name, depth)
+			local start_idx = #lines + 1
+			table.insert(lines, "")
 			for _, block_line in ipairs(block_lines) do
 				table.insert(lines, block_line)
+			end
+			for i = start_idx, #lines do
+				link_store[i] = { is_heading = true, depth = depth }
 			end
 		else
 			if depth == 5 and not has_dir_newline then
@@ -129,11 +138,36 @@ local function render_tree(tree, lines, depth, relpath)
 			end
 
 			local indent = string.rep("  ", depth - 5)
+			local line_idx = #lines + 1
 			table.insert(lines, indent .. "- **" .. dir_name .. "**")
+			link_store[line_idx] = { is_heading = true, depth = depth }
 		end
 
-		render_tree(subtree, lines, depth + 1, relpath .. dir_name .. "/")
+		render_tree(subtree, lines, depth + 1, relpath .. dir_name .. "/", link_store)
 	end
+
+	return link_store
+end
+
+function M.get_index_data()
+	local root = config.pages_dir
+	local tree = build_tree(root)
+
+	local lines = {}
+	local link_store = {}
+
+	local wiki_block = heading_to_block("Wiki", 0)
+	local start_idx = 1
+	for _, line in ipairs(wiki_block) do
+		table.insert(lines, line)
+	end
+	for i = start_idx, #lines do
+		link_store[i] = { is_title = true }
+	end
+
+	render_tree(tree, lines, 0, "pages/", link_store)
+
+	return lines, link_store
 end
 
 local function same_file(buf, path)
