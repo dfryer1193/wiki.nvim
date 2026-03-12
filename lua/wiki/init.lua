@@ -41,23 +41,24 @@ local function open_link(is_index_buffer)
 		end
 
 		if path then
-			path = resolve_path(path, current_buf)
-			path = path:gsub("%s+$", "")
+			local full_path = resolve_path(path, current_buf)
+			full_path = full_path:gsub("%s+$", "")
 
-			if vim.fn.filereadable(path) == 1 then
+			local rel_path = full_path:sub(#config.pages_dir + 2)
+			local tag_name = rel_path:gsub("%.md$", ""):gsub("/", "-")
+
+			if vim.fn.filereadable(full_path) == 1 then
+				vim.cmd("tag! " .. tag_name)
 				if anchor then
-					vim.cmd("edit " .. path)
-					local tag_name = anchor:gsub("%-", " ")
-					vim.cmd("tag " .. vim.fn.escape(tag_name, " "))
-				else
-					vim.cmd("edit " .. path)
+					local anchor_tag = anchor:gsub("%-", " ")
+					vim.cmd("tag " .. vim.fn.escape(anchor_tag, " "))
 				end
 				local newbuf = vim.api.nvim_get_current_buf()
 				vim.bo[newbuf].filetype = "markdown"
 				vim.bo[newbuf].modifiable = true
 				vim.bo[newbuf].readonly = false
 			else
-				print("File not found: " .. path)
+				print("File not found: " .. full_path)
 			end
 		end
 	else
@@ -79,23 +80,24 @@ local function open_link(is_index_buffer)
 		end
 
 		if path then
-			path = resolve_path(path, current_buf)
-			path = path:gsub("%s+$", "")
+			local full_path = resolve_path(path, current_buf)
+			full_path = full_path:gsub("%s+$", "")
 
-			if vim.fn.filereadable(path) == 1 then
+			local rel_path = full_path:sub(#config.pages_dir + 2)
+			local tag_name = rel_path:gsub("%.md$", ""):gsub("/", "-")
+
+			if vim.fn.filereadable(full_path) == 1 then
+				vim.cmd("tag! " .. tag_name)
 				if anchor then
-					vim.cmd("edit " .. path)
-					local tag_name = anchor:gsub("%-", " ")
-					vim.cmd("tag " .. vim.fn.escape(tag_name, " "))
-				else
-					vim.cmd("edit " .. path)
+					local anchor_tag = anchor:gsub("%-", " ")
+					vim.cmd("tag " .. vim.fn.escape(anchor_tag, " "))
 				end
 				local newbuf = vim.api.nvim_get_current_buf()
 				vim.bo[newbuf].filetype = "markdown"
 				vim.bo[newbuf].modifiable = true
 				vim.bo[newbuf].readonly = false
 			else
-				print("File not found: " .. path)
+				print("File not found: " .. full_path)
 			end
 		end
 	end
@@ -120,6 +122,7 @@ function M.open_index()
 	vim.bo[buf].readonly = true
 	vim.bo[buf].filetype = "markdown"
 	vim.bo[buf].syntax = "markdown"
+	vim.bo[buf].modified = false
 
 	vim.keymap.set("n", "<CR>", function() open_link(true) end, { noremap = true, silent = true, buffer = buf })
 	vim.keymap.set("n", "<C-]>", function() open_link(true) end, { noremap = true, silent = true, buffer = buf })

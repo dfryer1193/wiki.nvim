@@ -190,16 +190,11 @@ end
 
 local function generate_tags()
 	local files = find_files(config.pages_dir)
-	local lines = { '!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/' }
+	local lines = { '!_TAG_FILE_FORMAT\t2\t/extended format; --format=1 will not append ;" to lines/' }
 
 	for _, file in ipairs(files) do
-		local file_h1 = read_first_h1(file.path)
-		local tag_name
-		if file_h1 then
-			tag_name = normalize_to_tag(file_h1)
-		else
-			tag_name = file.name:gsub("%.md$", ""):lower()
-		end
+		local rel_path = file.path:sub(#config.pages_dir + 2)
+		local tag_name = rel_path:gsub("%.md$", ""):lower():gsub("/", "-")
 		table.insert(lines, string.format("%s\t%s\t1", tag_name, file.path))
 
 		local headings = read_all_headings(file.path)
