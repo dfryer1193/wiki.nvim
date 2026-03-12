@@ -34,15 +34,7 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 vim.api.nvim_create_autocmd("VimEnter", {
 	callback = function()
 		if vim.fn.argc() == 0 then
-			local fs = require("wiki.fs")
-			fs.ensure()
-			require("wiki.index").generate()
-			vim.cmd.edit(require("wiki.config").index_file)
-			local buf = vim.api.nvim_get_current_buf()
-			vim.bo[buf].modifiable = false
-			vim.bo[buf].readonly = true
-			vim.bo[buf].filetype = "markdown"
-			vim.bo[buf].syntax = "markdown"
+			require("wiki").open_index()
 		end
 	end,
 })

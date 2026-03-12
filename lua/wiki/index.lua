@@ -60,7 +60,6 @@ local function get_link_text(filepath, filename)
     return h1
   end
   local fallback = filename and filename:gsub("%.md$", "") or "unknown"
-  print("DEBUG get_link_text: filepath=" .. tostring(filepath) .. ", filename=" .. tostring(filename) .. ", fallback=" .. tostring(fallback))
   return fallback
 end
 

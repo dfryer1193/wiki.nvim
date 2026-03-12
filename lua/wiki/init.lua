@@ -9,50 +9,35 @@ function M.setup(user_config)
 	config.setup(user_config or {})
 end
 
-function M.open_index()
-	fs.ensure()
-	vim.cmd("edit " .. config.index_file)
-
-	local buf = vim.api.nvim_get_current_buf()
-	vim.bo[buf].modifiable = false
-	vim.bo[buf].readonly = true
-	vim.bo[buf].filetype = "markdown"
-	vim.bo[buf].syntax = "markdown"
-
-	local function open_link()
-		local line = vim.api.nvim_get_current_line()
-		local path, anchor = string.match(line, "%((.-)#([^)]+)%)")
-		if not path then
-			path = string.match(line, "%((.-)%)")
+local function resolve_path(path, current_buf)
+	if path:sub(1, 6) == "pages/" then
+		return config.pages_dir .. "/" .. path:sub(7)
+	elseif not path:match("^/") and not path:match("^%a:") then
+		local current_file = vim.api.nvim_buf_get_name(current_buf)
+		local current_dir = current_file:match("^(.*)/")
+		if current_dir then
+			return current_dir .. "/" .. path
 		end
-		if path then
-			if anchor then
-				vim.cmd("edit " .. path)
-				local tag_name = anchor:gsub("%-", " ")
-				vim.cmd("tag " .. vim.fn.escape(tag_name, " "))
-			else
-				vim.cmd("edit " .. path)
-			end
-		end
+		return config.pages_dir .. "/" .. path
 	end
-
-	vim.keymap.set("n", "<CR>", open_link, { noremap = true, silent = true, buffer = buf })
-	vim.keymap.set("n", "g<C-]>", "<C-]>", { noremap = true, silent = true, buffer = buf })
-	vim.keymap.set("n", "g<C-t>", "<C-t>", { noremap = true, silent = true, buffer = buf })
+	return path
 end
 
-function M.setup_buffer()
-	local buf = vim.api.nvim_get_current_buf()
-	local bufname = vim.api.nvim_buf_get_name(buf)
-	if bufname:sub(1, #config.pages_dir) == config.pages_dir then
-		vim.bo[buf].filetype = "markdown"
-		vim.keymap.set("n", "<CR>", function()
-			local line = vim.api.nvim_get_current_line()
-			local path, anchor = string.match(line, "%((.-)#([^)]+)%)")
-			if not path then
-				path = string.match(line, "%((.-)%)")
-			end
-			if path then
+local function open_link(is_index_buffer)
+	local line = vim.api.nvim_get_current_line()
+	local current_buf = vim.api.nvim_get_current_buf()
+
+	if is_index_buffer then
+		local path, anchor = string.match(line, "%(([^#)%)]+)#([^)]+)%)")
+		if not path then
+			path, anchor = string.match(line, "%(([^)]+)%)")
+		end
+
+		if path then
+			path = resolve_path(path, current_buf)
+			path = path:gsub("%s+$", "")
+
+			if vim.fn.filereadable(path) == 1 then
 				if anchor then
 					vim.cmd("edit " .. path)
 					local tag_name = anchor:gsub("%-", " ")
@@ -61,10 +46,100 @@ function M.setup_buffer()
 					vim.cmd("edit " .. path)
 				end
 				local newbuf = vim.api.nvim_get_current_buf()
+				vim.bo[newbuf].filetype = "markdown"
 				vim.bo[newbuf].modifiable = true
 				vim.bo[newbuf].readonly = false
+			else
+				print("File not found: " .. path)
 			end
-		end, { noremap = true, silent = true, buffer = buf })
+		end
+	else
+		local col = vim.fn.col(".") - 1
+		local path, anchor = string.match(line, "%(([^#)%)]+)#([^)]+)%)")
+		if not path then
+			path, anchor = string.match(line, "%(([^)]+)%)")
+		end
+
+		if path and col >= 0 then
+			local line_start = line:match("^%[.*%]%(")
+			if line_start then
+				local link_start = #line_start
+				local link_end = line:find("%)$", link_start, true)
+				if link_start and link_end and (col < link_start or col > link_end) then
+					path = nil
+				end
+			end
+		end
+
+		if path then
+			path = resolve_path(path, current_buf)
+			path = path:gsub("%s+$", "")
+
+			if vim.fn.filereadable(path) == 1 then
+				if anchor then
+					vim.cmd("edit " .. path)
+					local tag_name = anchor:gsub("%-", " ")
+					vim.cmd("tag " .. vim.fn.escape(tag_name, " "))
+				else
+					vim.cmd("edit " .. path)
+				end
+				local newbuf = vim.api.nvim_get_current_buf()
+				vim.bo[newbuf].filetype = "markdown"
+				vim.bo[newbuf].modifiable = true
+				vim.bo[newbuf].readonly = false
+			else
+				print("File not found: " .. path)
+			end
+		end
+	end
+end
+
+function M.open_index()
+	fs.ensure()
+	index.generate()
+
+	local lines = vim.fn.readfile(config.index_file)
+	if not lines then
+		lines = { "# Empty Wiki!" }
+	end
+
+	vim.cmd("enew")
+	local buf = vim.api.nvim_get_current_buf()
+
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+	vim.api.nvim_buf_set_name(buf, "wiki-index")
+
+	vim.bo[buf].modifiable = false
+	vim.bo[buf].readonly = true
+	vim.bo[buf].filetype = "markdown"
+	vim.bo[buf].syntax = "markdown"
+
+	vim.keymap.set("n", "<CR>", function() open_link(true) end, { noremap = true, silent = true, buffer = buf })
+	vim.keymap.set("n", "<C-]>", function() open_link(true) end, { noremap = true, silent = true, buffer = buf })
+end
+
+function M.setup_buffer()
+	local buf = vim.api.nvim_get_current_buf()
+	local bufname = vim.api.nvim_buf_get_name(buf)
+
+	local is_index_named = bufname == "wiki-index"
+	local is_in_pages = bufname:sub(1, #config.pages_dir) == config.pages_dir
+	local is_index_file = bufname == config.index_file
+
+	if is_index_named or is_in_pages then
+		vim.bo[buf].filetype = "markdown"
+
+		if is_index_named then
+			vim.bo[buf].modifiable = false
+			vim.bo[buf].readonly = true
+			vim.keymap.set("n", "<CR>", function() open_link(true) end, { noremap = true, silent = true, buffer = buf })
+			vim.keymap.set("n", "<C-]>", function() open_link(true) end, { noremap = true, silent = true, buffer = buf })
+		else
+			vim.bo[buf].modifiable = true
+			vim.bo[buf].readonly = false
+			vim.keymap.set("n", "<CR>", function() open_link(false) end, { noremap = true, silent = true, buffer = buf })
+			vim.keymap.set("n", "<C-]>", function() open_link(false) end, { noremap = true, silent = true, buffer = buf })
+		end
 	end
 end
 
