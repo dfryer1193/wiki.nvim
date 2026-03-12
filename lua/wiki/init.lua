@@ -10,14 +10,21 @@ function M.setup(user_config)
 end
 
 local function resolve_path(path, current_buf)
-	if path:sub(1, 6) == "pages/" then
-		return config.pages_dir .. "/" .. path:sub(7)
-	elseif not path:match("^/") and not path:match("^%a:") then
+	if not path:match("^/") and not path:match("^%a:") then
 		local current_file = vim.api.nvim_buf_get_name(current_buf)
 		local current_dir = current_file:match("^(.*)/")
-		if current_dir then
+
+		-- Check if we're in the pages directory or a subdirectory
+		if current_dir and current_dir:sub(1, #config.pages_dir) == config.pages_dir then
 			return current_dir .. "/" .. path
 		end
+
+		-- Check if path already includes pages/ prefix
+		if path:sub(1, 6) == "pages/" then
+			return config.pages_dir .. "/" .. path:sub(7)
+		end
+
+		-- Otherwise, resolve relative to pages directory
 		return config.pages_dir .. "/" .. path
 	end
 	return path
