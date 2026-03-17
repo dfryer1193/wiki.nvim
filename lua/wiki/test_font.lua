@@ -78,8 +78,8 @@ local function run_tests()
     "╚██████╔╝",
     " ╚═════╝ ",
   }
-  assert_table_eq(font[6][0], expected_0, "Font 6 - 0 (block digit)")
-
+  assert_table_eq(font[6]["0"], expected_0, "Font 6 - 0 (block digit)")
+ 
   local expected_1 = {
     " ██╗",
     "███║",
@@ -88,8 +88,8 @@ local function run_tests()
     " ██║",
     " ╚═╝",
   }
-  assert_table_eq(font[6][1], expected_1, "Font 6 - 1 (block digit)")
-
+  assert_table_eq(font[6]["1"], expected_1, "Font 6 - 1 (block digit)")
+ 
   local expected_2 = {
     "██████╗ ",
     "╚════██╗",
@@ -98,7 +98,7 @@ local function run_tests()
     "███████╗",
     "╚══════╝",
   }
-  assert_table_eq(font[6][2], expected_2, "Font 6 - 2 (block digit)")
+  assert_table_eq(font[6]["2"], expected_2, "Font 6 - 2 (block digit)")
 
   print("\n--- All font heights available ---")
   assert_eq(font[6] ~= nil, true, "Font height 6 exists")
