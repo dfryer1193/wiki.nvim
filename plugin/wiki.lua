@@ -30,3 +30,17 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 		end
 	end,
 })
+
+vim.api.nvim_create_autocmd("VimEnter", {
+	callback = function()
+		if vim.fn.argc() == 0 then
+			require("wiki").open_index()
+		end
+	end,
+})
+
+vim.api.nvim_create_autocmd("BufReadPost", {
+	callback = function(args)
+		require("wiki").setup_buffer()
+	end,
+})
